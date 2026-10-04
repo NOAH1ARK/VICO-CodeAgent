@@ -1,0 +1,149 @@
+wandb:
+  entity: null
+  resume: 'auto'
+
+experiment:
+    project: "coding_rl" # need to be the same as the file name
+    start_from_scratch: True # set False to resume training
+    resume: "auto" # with start_from_scratch=False: "auto" resumes from <project>/progress.json, otherwise uses current_epoch
+    total_step: 300
+    save_every: 30
+    eval_every: 10
+    current_epoch: 1
+    deepspeed_file: "1_node_8_gpus_deepspeed_zero3_nooffload" # ZeRO-3 + bf16, no CPU offload (use 1_node_8_gpus_deepspeed_zero3 = with offload, only on OOM)
+    num_node: 1 # single machine 8xA100
+    node_index: 0 # no need to change
+
+
+system:
+    HTTP_PROXY: null # set proxy if needed, e.g. "http://xxx.xx.xxx.xxx:xxxx"
+    HF_HOME: # absolute path of your HF_HOME
+    env_name: "vico" # env name
+    envs_dir: # absolute path of your env directory
+    rl_base_dir: # /absolute/path/to/VICO-CodeAgent
+
+
+model:
+    policy_model: # absolute path of your policy model (Qwen-4B)
+    reward_model: # absolute path of your reward model (Qwen-4B)
+    environment_model: # absolute path of your environment model (Qwen-4B)
+    optimized_name: "optimized"
+    optimized_reward_name: "optimized_reward"
+    optimized_env_name: "optimized_env"
+
+
+dataset:
+    environment_type: "stem_tasks"
+    train_dataset: "CodeContests_train" 
+    eval_dataset: "LiveBench-ReasonFlux"
+    dataset_state_prefix: "dataset_state"
+    env_pending_prefix: "env_pending"
+    optimization_data: "rl_data"
+    reward_optimization_data: "reward_rl_data"
+    env_optimization_data: "env_rl_data"
+
+execute:
+    num_chunk: 128 # max concurrent sandbox processes per chunk (code x test pairs)
+    hard_timeout_s: 30 # hard kill for abnormal processes (judging still uses per-test test_time_limit)
+
+reward:
+    syn_weight: 0.3 # step reward = GT pass ratio [0,1] + syn_weight * syn pass ratio [0,0.3]
+    first_step_acc_range: [0.2, 0.8] # skip policy samples of tasks whose step-1 acc is outside; null to disable
+
+rollout:
+    policy:
+      num_task: 64
+      num_response_per_task: 32 # group size for group-relative advantage
+      temperature: 1.0
+      model_length: 12288 # vLLM context (multi-step message stack)
+      max_gen_length: 2048
+      gpu_groups: [[0,1,2,3],[4,5,6,7]] # two vLLM engines, TP=4 each
+      start_with_think: False
+      # multi-step agent: execute -> feedback -> fix
+      max_steps: 5
+      patience: 2 # stop after 2 consecutive steps without feedback-score improvement
+      num_feedback_gt_tests: 1 # first k GT tests are shown as public examples in the feedback
+      max_history_turns: 2 # (assistant, feedback) rounds kept in context
+      feedback_max_chars: 300
+      success_criterion: "public_gt" # success = public GT examples all pass; "all_feedback" also requires all syn tests
+    reward:
+      num_response_per_task: 16
+      temperature: 0.8
+      model_length: 10000
+      max_gen_length: 2048
+      gpu_groups: [[0,1,2,3],[4,5,6,7]]
+      start_with_think: False
+    environment:
+        temperature: 0.8
+        num_response_per_task: 3
+        model_length: 20000
+        max_gen_length: 8096
+        gpu_groups: [[0,1,2,3],[4,5,6,7]]
+        if_start_with_think: True
+
+
+
+training:
+    policy:
+        gradient_checkpointing_enable: True # multi-step prompts are long
+        update_per_step: 2
+        batch_size_lm: 1
+        max_gen_length: 2048
+        max_prompt_len: 10240
+    reward:
+        gradient_checkpointing_enable: False
+        update_per_step: 2
+        batch_size_lm: 1
+        max_gen_length: 4096
+        max_prompt_len: 2048
+    env:
+        gradient_checkpointing_enable: True
+        update_per_step: 1
+        batch_size_lm: 1
+        max_gen_length: 8096
+        max_prompt_len: 4096
+    mixed_precision: "bf16"
+    enable_tf32: True
+    seed: 10086
+    max_grad_norm: 1.0
+    logp_chunk_size: 1024 # response-only logits, fp32 log-softmax computed in chunks of this many tokens
+    use_kl_estimator_k3: True # K3 estimator for the KL penalty
+    eps: 0.20 # PPO clip
+    beta: 0.01 # KL penalty coefficient
+    num_train_epochs: 1
+
+
+optimizer:
+    name: adamw
+    params: # default adamw params
+        learning_rate: 1e-6
+        scale_lr: False # scale learning rate by total batch size
+        beta1: 0.9
+        beta2: 0.999
+        weight_decay: 0.0
+        epsilon: 1e-8
+
+
+lr_scheduler:
+    scheduler: "cosine"
+    params:
+        learning_rate: ${optimizer.params.learning_rate}
+        warmup_steps: 0
+        min_lr_scale: 1.0
+
+
+evaluation:
+    policy:
+        num_response_per_task: 3
+        temperature: 0.0
+        model_length: 20000
+        max_gen_length: 2000
+        gpu_groups: [[0,1,2,3],[4,5,6,7]]
+        if_start_with_think: False
+        max_steps: 5
+        patience: 2
+        num_feedback_gt_tests: 1
+        max_history_turns: 2
+        feedback_max_chars: 300
+        success_criterion: "public_gt" # success = public GT examples all pass; "all_feedback" also requires all syn tests
+

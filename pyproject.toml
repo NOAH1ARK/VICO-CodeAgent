@@ -1,0 +1,18 @@
+[project]
+name = "vico-codeagent"
+version = "0.1.0"
+description = "Agentic RL for multi-step code agents: co-optimizing policy, reward and environment models."
+readme = "README.md"
+license = { text = "Apache-2.0" }
+requires-python = ">=3.10"
+
+[tool.ruff]
+line-length = 120
+target-version = "py310"
+extend-exclude = ["data/*.ipynb"]
+
+[tool.ruff.lint]
+select = ["E9", "F"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

@@ -1,0 +1,33 @@
+VICO-CodeAgent
+Copyright 2026 Yiming
+
+This project is licensed under the Apache License, Version 2.0 (see LICENSE).
+
+This project is derived from RLAnything / Open-AgentRL
+(https://github.com/Gen-Verse/Open-AgentRL), Copyright the Gen-Verse authors,
+licensed under the Apache License, Version 2.0. The single-turn coding setting
+of RLAnything was used as the starting point.
+
+Summary of modifications relative to the upstream coding setting
+-----------------------------------------------------------------
+* sample/llm_policy_rollout.py  - rewritten as a multi-step "execute -> feedback
+  -> fix" agent rollout with persistent vLLM engines, per-trajectory
+  termination (success / no-improvement / max-steps) and step-level records.
+* reward/llm_rl_reward.py, reward/advantage.py - dual-dimension step reward
+  (GT pass ratio + weighted synthetic-test pass ratio) and step-level
+  group-relative advantages; extended training/eval metrics.
+* train/coding_train.py - adapted from the upstream trainer (PPO-clip + K3 KL
+  objective is upstream); added per-batch padding trim, prompt-length
+  filtering that keeps rewards aligned, KL / clip-fraction / loss logging and
+  crash-safe checkpoint swapping.
+* common/sandbox.py - rewrite of the upstream process-based executor as a
+  shared batched scheduler: chunked concurrency, queue draining for large
+  outputs, two-level (judge / hard-kill) timeouts, best-effort hardening.
+* common/safe_io.py, sample/build_tasks.py - new: atomic + file-locked JSON
+  persistence and persistent per-node task state.
+* coding_rl.py, coding_eval.py, sample/llm_env_rollout.py, reward/execute.py,
+  reward/rl_aggregate_data.py, train/utils.py - adapted to the above
+  (resume from progress.json, env-task acceptance, independent re-judging).
+
+train/lr_schedulers.py and train/log_utils.py contain code from the
+HuggingFace / Optuna authors (Apache-2.0); their original headers are kept.
