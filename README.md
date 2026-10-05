@@ -79,7 +79,7 @@ A(i, s) = (held_reward(i, s) - group_mean_s) / group_std_s
 
 ## 快速开始
 
-完整训练面向 **Linux + NVIDIA GPU**，默认配置以单机 8 GPU 为目标，模型路径由使用者填写。`8×A100 80GB / 4B 模型`是项目的目标配置，不是本仓库附带的实测性能结论。GPU 分组、上下文长度与 batch size 需要按实际环境调整。
+完整训练面向 **Linux + NVIDIA GPU**，默认配置以单机 8 GPU 为目标，模型路径由使用者填写。GPU 分组、上下文长度与 batch size 需要按实际环境调整。
 
 ```bash
 git clone https://github.com/NOAH1ARK/VICO-CodeAgent.git
